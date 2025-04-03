@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Itinerary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        html, body {
+            height: auto;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        body {
+            background: url('https://source.unsplash.com/1600x900/?travel,nature') no-repeat center center fixed;
+            background-size: cover;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 50%;
+            margin-bottom: 50px;
+        }
+        .itinerary-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="bg-gray-900 text-white py-4 px-8 flex justify-between items-center">
+        <h1 class="text-4xl font-bold">Travel Planner</h1>
+        <ul class="flex space-x-6 text-lg">
+            <li><a href="#about" class="hover:text-blue-400">About</a></li>
+            <li><a href="#itinerary" class="hover:text-blue-400">Plan Itinerary</a></li>
+        </ul>
+    </nav>
+    
+    <!-- Introduction Section -->
+    <section id="about" class="text-center text-white py-20 px-6">
+        <h2 class="text-5xl font-bold mb-4">Welcome to Travel Planner</h2>
+        <p class="text-xl text-black max-w-2xl mx-auto">Plan your perfect trip with our itinerary generator. Just enter your destination and number of days, and we'll create a personalized travel plan for you!</p>
+    </section>
+    
+    <div id="itinerary" class="glass mx-auto mt-10">
+        <h1 class="text-6xl font-extrabold text-center text-gray-900 mb-8">Plan Your Itinerary</h1>
+        <div class="content">
+            <input type="text" id="city" placeholder="Enter City" class="w-full p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-500 text-lg mb-5">
+            <input type="number" id="days" placeholder="Number of Days" class="w-full p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-500 text-lg mb-8">
+            <button id="send" class="w-full bg-blue-600 text-white py-4 rounded-lg text-xl font-semibold hover:bg-blue-800 transition">Get Itinerary</button>
+        </div>
+        <div id="output" class="mt-8"></div>
+    </div>
+    
+    <script>
+        document.getElementById("send").addEventListener("click", function() {
+            let city = document.getElementById("city").value;
+            let days = document.getElementById("days").value;
+            
+            fetch("http://127.0.0.1:5000/itinerary", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ city: city, days: parseInt(days) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                let outputDiv = document.getElementById("output");
+                outputDiv.innerHTML = "";
+                
+                if (!data.itinerary || !Array.isArray(data.itinerary)) {
+                    outputDiv.innerHTML = `<p class='text-red-600 text-lg'>No itinerary available.</p>`;
+                    return;
+                }
+                
+                let itineraryHtml = data.itinerary.map(day => `
+                    <div class='itinerary-card'>
+                        <h2 class='text-3xl font-bold'>Day ${day.day}</h2>
+                        ${day.morning ? `<p class='text-xl'><strong class='text-blue-700'>Morning:</strong> ${day.morning.place} - ${day.morning.review}</p>` : ''}
+                        ${day.noon ? `<p class='text-xl'><strong class='text-blue-700'>Noon:</strong> ${day.noon.place} - ${day.noon.review}</p>` : ''}
+                        ${day.evening ? `<p class='text-xl'><strong class='text-blue-700'>Evening:</strong> ${day.evening.place} - ${day.evening.review}</p>` : ''}
+                        ${day.lunch ? `<p class='text-xl'><strong class='text-green-700'>Lunch:</strong> ${day.lunch.name} - ${day.lunch.location} (₹${day.lunch.price})</p>` : ''}
+                        ${day.dinner ? `<p class='text-xl'><strong class='text-red-700'>Dinner:</strong> ${day.dinner.name} - ${day.dinner.location} (₹${day.dinner.price})</p>` : ''}
+                    </div>
+                `).join('');
+                
+                if (data.recommended_hotel) {
+                    let hotel = data.recommended_hotel;
+                    itineraryHtml += `
+                        <div class='itinerary-card bg-green-100'>
+                            <h2 class='text-3xl font-bold text-green-800'>Recommended Hotel</h2>
+                            <p class='text-xl'><strong>Name:</strong> ${hotel.name}</p>
+                            <p class='text-xl'><strong>Location:</strong> ${hotel.location}</p>
+                            <p class='text-xl'><strong>Price:</strong> ₹${hotel.price}</p>
+                        </div>
+                    `;
+                }
+                
+                outputDiv.innerHTML = itineraryHtml;
+                gsap.to(".glass", { width: "90%" });
+                gsap.from("#output div", { opacity: 0, y: 20, duration: 1, stagger: 0.3, delay: 0.4 });
+            })
+            .catch(error => console.error("Error:", error));
+        });
+    </script>
+</body>
+</html>
