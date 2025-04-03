@@ -1,0 +1,61 @@
+# Editor files
+.vscode/
+.idea/
+.netbeans/
+.jcreator/
+
+# Node.js files
+node_modules/
+npm-debug.log
+
+# Logs
+logs/
+*.log
+
+# Cache files
+.cache/
+tmp/
+temp/
+
+# Archives
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.bz2
+
+# Backups
+*.bak
+*.backup
+
+# IDE configuration files
+.vs/
+.vscode/
+.settings/
+.metadata/
+
+# Other
+.env
+.env.example
+package-lock.json
+yarn.lock
+coverage/
+*.db
+*.sqlite
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.ico
+*.mp3
+*.wav
+*.ogg
+*.mp4
+*.avi
+*.mov
+*.flv
+*.js.map
+*.min.js
+*.min.css

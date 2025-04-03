@@ -32,13 +32,36 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             margin-bottom: 20px;
         }
+        .api-selection {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .api-option {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .api-option.selected {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.1);
+            font-weight: bold;
+        }
+        .api-key-container {
+            margin-bottom: 15px;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <!-- Navbar -->
     <nav class="bg-gray-900 text-white py-4 px-8 flex justify-between items-center">
-        <h1 class="text-4xl font-bold">Travel Planner</h1>
-        <ul class="flex space-x-6 text-lg">
+        <h1 class="text-3xl font-bold">Travel Planner</h1>
+        <ul class="flex space-x-6">
             <li><a href="#about" class="hover:text-blue-400">About</a></li>
             <li><a href="#itinerary" class="hover:text-blue-400">Plan Itinerary</a></li>
         </ul>
@@ -46,68 +69,284 @@
     
     <!-- Introduction Section -->
     <section id="about" class="text-center text-white py-20 px-6">
-        <h2 class="text-5xl font-bold mb-4">Welcome to Travel Planner</h2>
-        <p class="text-xl text-black max-w-2xl mx-auto">Plan your perfect trip with our itinerary generator. Just enter your destination and number of days, and we'll create a personalized travel plan for you!</p>
+        <h2 class="text-4xl font-bold mb-4">Welcome to Travel Planner</h2>
+        <p class="text-lg text-black max-w-2xl mx-auto">Plan your perfect trip with our itinerary generator. Just enter your destination and number of days, and we'll create a personalized travel plan for you!</p>
     </section>
     
     <div id="itinerary" class="glass mx-auto mt-10">
-        <h1 class="text-6xl font-extrabold text-center text-gray-900 mb-8">Plan Your Itinerary</h1>
+        <h1 class="text-5xl font-extrabold text-center text-gray-900 mb-8">Plan Your Itinerary</h1>
         <div class="content">
+            <div class="api-selection">
+                <div class="api-option selected" data-api="local">Local API</div>
+                <div class="api-option" data-api="gemini">Google Gemini</div>
+                <div class="api-option" data-api="groq">Groq</div>
+            </div>
+            
+            
+            
+            
             <input type="text" id="city" placeholder="Enter City" class="w-full p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-500 text-lg mb-5">
             <input type="number" id="days" placeholder="Number of Days" class="w-full p-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-500 text-lg mb-8">
             <button id="send" class="w-full bg-blue-600 text-white py-4 rounded-lg text-xl font-semibold hover:bg-blue-800 transition">Get Itinerary</button>
+        </div>
+        <div id="loading" class="mt-8 hidden">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto"></div>
+                <p class="mt-4 text-gray-700">Generating your perfect itinerary...</p>
+            </div>
         </div>
         <div id="output" class="mt-8"></div>
     </div>
     
     <script>
-        document.getElementById("send").addEventListener("click", function() {
-            let city = document.getElementById("city").value;
-            let days = document.getElementById("days").value;
+        // API selection handling
+        const apiOptions = document.querySelectorAll('.api-option');
+
+        let selectedApi = 'local';
+        
+        apiOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                // Remove selected class from all options
+                apiOptions.forEach(opt => opt.classList.remove('selected'));
+                // Add selected class to clicked option
+                this.classList.add('selected');
+                // Store selected API
+                selectedApi = this.getAttribute('data-api');
+                
+                // Show/hide API key inputs based on selection
+                geminiKeyContainer.style.display = selectedApi === 'gemini' ? 'block' : 'none';
+                groqKeyContainer.style.display = selectedApi === 'groq' ? 'block' : 'none';
+            });
+        });
+        
+        // Process itinerary data
+        function processItineraryData(data) {
+            let outputDiv = document.getElementById("output");
+            outputDiv.innerHTML = "";
             
-            fetch("http://127.0.0.1:5000/itinerary", {
+            if (!data.itinerary || !Array.isArray(data.itinerary)) {
+                outputDiv.innerHTML = `<p class='text-red-600 text-lg'>No itinerary available.</p>`;
+                return;
+            }
+            
+            let itineraryHtml = data.itinerary.map(day => `
+                <div class='itinerary-card'>
+                    <h2>Day ${day.day}</h2>
+                    ${day.morning ? `<p><strong class='text-blue-700'>Morning:</strong> ${day.morning.place} - ${day.morning.review}</p>` : ''}
+                    ${day.noon ? `<p><strong class='text-blue-700'>Noon:</strong> ${day.noon.place} - ${day.noon.review}</p>` : ''}
+                    ${day.evening ? `<p><strong class='text-blue-700'>Evening:</strong> ${day.evening.place} - ${day.evening.review}</p>` : ''}
+                    ${day.lunch ? `<p><strong class='text-green-700'>Lunch:</strong> ${day.lunch.name} - ${day.lunch.location} (₹${day.lunch.price})</p>` : ''}
+                    ${day.dinner ? `<p><strong class='text-red-700'>Dinner:</strong> ${day.dinner.name} - ${day.dinner.location} (₹${day.dinner.price})</p>` : ''}
+                </div>
+            `).join('');
+            
+            if (data.recommended_hotel) {
+                let hotel = data.recommended_hotel;
+                itineraryHtml += `
+                    <div class='itinerary-card bg-green-100'>
+                        <h2 class='text-green-800'>Recommended Hotel</h2>
+                        <p><strong>Name:</strong> ${hotel.name}</p>
+                        <p><strong>Location:</strong> ${hotel.location}</p>
+                        <p><strong>Price:</strong> ₹${hotel.price}</p>
+                    </div>
+                `;
+            }
+            
+            outputDiv.innerHTML = itineraryHtml;
+            gsap.to(".glass", { width: "90%" });
+            gsap.from("#output div", { opacity: 0, y: 20, duration: 1, stagger: 0.3, delay: 0.4 });
+        }
+        
+        // Get itinerary from local API
+        function getLocalItinerary(city, days) {
+            return fetch("http://127.0.0.1:5000/itinerary", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ city: city, days: parseInt(days) })
             })
+            .then(response => response.json());
+        }
+        
+        // Get itinerary from Google Gemini API
+        function getGeminiItinerary(city, days, apiKey) {
+            const geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+            
+            const prompt = `
+Create a detailed travel itinerary for ${days} days in ${city}. Format the response as a JSON object exactly matching this structure:
+{
+  "itinerary": [
+    {
+      "day": 1,
+      "morning": {"place": "Place name", "review": "Brief description"},
+      "noon": {"place": "Place name", "review": "Brief description"},
+      "evening": {"place": "Place name", "review": "Brief description"},
+      "lunch": {"name": "Restaurant name", "location": "Location", "price": approximate price in INR as a number},
+      "dinner": {"name": "Restaurant name", "location": "Location", "price": approximate price in INR as a number}
+    },
+    // Repeat for each day
+  ],
+  "recommended_hotel": {
+    "name": "Hotel name",
+    "location": "Hotel location",
+    "price": approximate price per night in INR as a number
+  }
+}
+Do not include any explanation, only return the JSON object.
+`;
+          
+            return fetch(`${geminiEndpoint}?key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            })
             .then(response => response.json())
             .then(data => {
-                let outputDiv = document.getElementById("output");
-                outputDiv.innerHTML = "";
-                
-                if (!data.itinerary || !Array.isArray(data.itinerary)) {
-                    outputDiv.innerHTML = `<p class='text-red-600 text-lg'>No itinerary available.</p>`;
-                    return;
+                // Extract the JSON from the Gemini response
+                const textResponse = data.candidates[0].content.parts[0].text;
+                try {
+                    // Find JSON in the response (handle cases where there might be extra text)
+                    const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        return JSON.parse(jsonMatch[0]);
+                    } else {
+                        throw new Error("No valid JSON found in response");
+                    }
+                } catch (error) {
+                    console.error("Failed to parse Gemini response:", error);
+                    return { error: "Failed to parse the itinerary data." };
                 }
-                
-                let itineraryHtml = data.itinerary.map(day => `
-                    <div class='itinerary-card'>
-                        <h2 class='text-3xl font-bold'>Day ${day.day}</h2>
-                        ${day.morning ? `<p class='text-xl'><strong class='text-blue-700'>Morning:</strong> ${day.morning.place} - ${day.morning.review}</p>` : ''}
-                        ${day.noon ? `<p class='text-xl'><strong class='text-blue-700'>Noon:</strong> ${day.noon.place} - ${day.noon.review}</p>` : ''}
-                        ${day.evening ? `<p class='text-xl'><strong class='text-blue-700'>Evening:</strong> ${day.evening.place} - ${day.evening.review}</p>` : ''}
-                        ${day.lunch ? `<p class='text-xl'><strong class='text-green-700'>Lunch:</strong> ${day.lunch.name} - ${day.lunch.location} (₹${day.lunch.price})</p>` : ''}
-                        ${day.dinner ? `<p class='text-xl'><strong class='text-red-700'>Dinner:</strong> ${day.dinner.name} - ${day.dinner.location} (₹${day.dinner.price})</p>` : ''}
-                    </div>
-                `).join('');
-                
-                if (data.recommended_hotel) {
-                    let hotel = data.recommended_hotel;
-                    itineraryHtml += `
-                        <div class='itinerary-card bg-green-100'>
-                            <h2 class='text-3xl font-bold text-green-800'>Recommended Hotel</h2>
-                            <p class='text-xl'><strong>Name:</strong> ${hotel.name}</p>
-                            <p class='text-xl'><strong>Location:</strong> ${hotel.location}</p>
-                            <p class='text-xl'><strong>Price:</strong> ₹${hotel.price}</p>
-                        </div>
-                    `;
-                }
-                
-                outputDiv.innerHTML = itineraryHtml;
-                gsap.to(".glass", { width: "90%" });
-                gsap.from("#output div", { opacity: 0, y: 20, duration: 1, stagger: 0.3, delay: 0.4 });
+            });
+        }
+        
+        // Get itinerary from Groq API
+        function getGroqItinerary(city, days, apiKey) {
+            const groqEndpoint = "https://api.groq.com/openai/v1/chat/completions";
+            
+            const prompt = `
+Create a detailed travel itinerary for ${days} days in ${city}. Format the response as a JSON object exactly matching this structure:
+{
+  "itinerary": [
+    {
+      "day": 1,
+      "morning": {"place": "Place name", "review": "Brief description"},
+      "noon": {"place": "Place name", "review": "Brief description"},
+      "evening": {"place": "Place name", "review": "Brief description"},
+      "lunch": {"name": "Restaurant name", "location": "Location", "price": approximate price in INR as a number},
+      "dinner": {"name": "Restaurant name", "location": "Location", "price": approximate price in INR as a number}
+    },
+    // Repeat for each day
+  ],
+  "recommended_hotel": {
+    "name": "Hotel name",
+    "location": "Hotel location",
+    "price": approximate price per night in INR as a number
+  }
+}
+Do not include any explanation, only return the JSON object.
+`;
+            
+            return fetch(groqEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "llama3-70b-8192",
+                    messages: [
+                        {
+                            role: "user",
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7
+                })
             })
-            .catch(error => console.error("Error:", error));
+            .then(response => response.json())
+            .then(data => {
+                // Extract the JSON from the Groq response
+                const textResponse = data.choices[0].message.content;
+                try {
+                    // Find JSON in the response (handle cases where there might be extra text)
+                    const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        return JSON.parse(jsonMatch[0]);
+                    } else {
+                        throw new Error("No valid JSON found in response");
+                    }
+                } catch (error) {
+                    console.error("Failed to parse Groq response:", error);
+                    return { error: "Failed to parse the itinerary data." };
+                }
+            });
+        }
+        
+        // Handle form submission
+        document.getElementById("send").addEventListener("click", function() {
+            let city = document.getElementById("city").value;
+            let days = document.getElementById("days").value;
+            
+            if (!city || !days) {
+                alert("Please enter both a city and number of days.");
+                return;
+            }
+            
+            // Show loading indicator
+            document.getElementById("loading").classList.remove("hidden");
+            document.getElementById("output").innerHTML = "";
+            
+            let itineraryPromise;
+            
+            // Choose the appropriate API based on selection
+            switch (selectedApi) {
+                case 'gemini':
+                    const geminiApiKey = "AIzaSyBS5AGVtbINSlReTMNEY9ytuH5OW2lY80g";
+                    if (!geminiApiKey) {
+                        alert("Please enter a Gemini API key.");
+                        document.getElementById("loading").classList.add("hidden");
+                        return;
+                    }
+                    itineraryPromise = getGeminiItinerary(city, days, geminiApiKey);
+                    break;
+                    
+                case 'groq':
+                    const groqApiKey = "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";
+                    if (!groqApiKey) {
+                        alert("Please enter a Groq API key.");
+                        document.getElementById("loading").classList.add("hidden");
+                        return;
+                    }
+                    itineraryPromise = getGroqItinerary(city, days, groqApiKey);
+                    break;
+                    
+                case 'local':
+                default:
+                    itineraryPromise = getLocalItinerary(city, days);
+                    break;
+            }
+            
+            // Process the response
+            itineraryPromise
+                .then(data => {
+                    // Hide loading indicator
+                    document.getElementById("loading").classList.add("hidden");
+                    
+                    // Check for errors
+                    if (data.error) {
+                        document.getElementById("output").innerHTML = `<p class='text-red-600 text-lg'>${data.error}</p>`;
+                        return;
+                    }
+                    
+                    // Process and display the itinerary
+                    processItineraryData(data);
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    document.getElementById("loading").classList.add("hidden");
+                    document.getElementById("output").innerHTML = `<p class='text-red-600 text-lg'>An error occurred while fetching your itinerary. Please try again later.</p>`;
+                });
         });
     </script>
 </body>
