@@ -6,7 +6,7 @@ def load_data():
     review_df = pd.read_csv('./Updated_Review_db3.csv', dtype=str, low_memory=False)
     hotel_df = pd.read_csv('./HotelData_cleaned.csv')
     restaurant_df = pd.read_csv('./restaurants_cleaned.csv')
-    print("✅ Data Loaded Successfully!")
+    print("Data Loaded Successfully!")
     return review_df, hotel_df, restaurant_df
 
 with open("location_recommendation_model.pkl", "rb") as f:
@@ -31,9 +31,8 @@ def generate_itinerary(city, days):
     hotels = hotel_df[hotel_df["city"].str.lower().str.strip() == city_lower]
     restaurants = restaurant_df[restaurant_df["City"].str.lower().str.strip() == city_lower]
 
-    # 🔴 If city doesn't exist in any dataset
     if city_reviews.empty and hotels.empty and restaurants.empty:
-        print(f"❌ City '{city}' not found in the dataset. Please try a different city.")
+        print(f" City '{city}' not found in the dataset. Please try a different city.")
         return None
 
     if not city_reviews.empty:
@@ -92,7 +91,7 @@ def generate_itinerary(city, days):
     }
 
 def main():
-    print("🔍 Welcome to the Travel Itinerary Recommendation System! 🌍")
+    print("Welcome to the Travel Itinerary Recommendation System!")
     city = input("Enter the city: ").strip()
     days = int(input("Enter the number of days: ").strip())
     
