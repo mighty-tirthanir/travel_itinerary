@@ -77,7 +77,7 @@
         <h1 class="text-5xl font-extrabold text-center text-gray-900 mb-8">Plan Your Itinerary</h1>
         <div class="content">
             <div class="api-selection">
-                <div class="api-option selected" data-api="local">Local API</div>
+                <div class="api-option selected" data-api="local">Local Model</div>
                 <div class="api-option" data-api="gemini">Google Gemini</div>
                 <div class="api-option" data-api="groq">Groq</div>
             </div>
@@ -163,7 +163,7 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ city: city, days: parseInt(days) })
-            })
+            }).then()
             .then(response => response.json());
         }
         
@@ -322,8 +322,12 @@ Do not include any explanation, only return the JSON object.
                     break;
                     
                 case 'local':
+                itineraryPromise = getLocalItinerary(city, days);
+                console.log(itineraryPromise)
+                break;
+
                 default:
-                    itineraryPromise = getLocalItinerary(city, days);
+                    itineraryPromise = getGroqlItinerary(city, days);
                     break;
             }
             
@@ -345,7 +349,7 @@ Do not include any explanation, only return the JSON object.
                 .catch(error => {
                     console.error("Error:", error);
                     document.getElementById("loading").classList.add("hidden");
-                    document.getElementById("output").innerHTML = `<p class='text-red-600 text-lg'>An error occurred while fetching your itinerary. Please try again later.</p>`;
+                    document.getElementById("output").innerHTML = `<p class='text-red-600 text-lg'>An error occurred while fetching your itinerary. Please try another model.</p>`;
                 });
         });
     </script>

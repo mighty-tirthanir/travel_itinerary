@@ -27,10 +27,15 @@ def generate_itinerary(city, days):
     review_df, hotel_df, restaurant_df = load_data()
     city_lower = city.lower().strip()
     
-    city_reviews = review_df[review_df["City"].str.contains(city_lower, case=False, na=False)]
-    hotels = hotel_df[hotel_df["city"].str.contains(city_lower, case=False, na=False)]
-    restaurants = restaurant_df[restaurant_df["City"].str.contains(city_lower, case=False, na=False)]
-    
+    city_reviews = review_df[review_df["City"].str.lower().str.strip() == city_lower]
+    hotels = hotel_df[hotel_df["city"].str.lower().str.strip() == city_lower]
+    restaurants = restaurant_df[restaurant_df["City"].str.lower().str.strip() == city_lower]
+
+    # 🔴 If city doesn't exist in any dataset
+    if city_reviews.empty and hotels.empty and restaurants.empty:
+        print(f"❌ City '{city}' not found in the dataset. Please try a different city.")
+        return None
+
     if not city_reviews.empty:
         city_reviews = rank_places_by_ml(city_reviews)
     
@@ -90,8 +95,11 @@ def main():
     print("🔍 Welcome to the Travel Itinerary Recommendation System! 🌍")
     city = input("Enter the city: ").strip()
     days = int(input("Enter the number of days: ").strip())
+    
     itinerary_json = generate_itinerary(city, days)
-    print(json.dumps(itinerary_json, indent=4))
+    
+    if itinerary_json:
+        print(json.dumps(itinerary_json, indent=4))
 
-if __name__ == "__main__":
+if __name__ == "_main_":
     main()
